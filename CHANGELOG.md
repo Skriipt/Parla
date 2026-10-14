@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-14
+
 Catch-up with VoiceInk 2.20 to 2.22 on models, plus a DirectML installer for
 AMD and Intel GPUs (issue #9).
 
