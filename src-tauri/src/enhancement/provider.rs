@@ -75,6 +75,15 @@ pub trait LLMProvider: Send + Sync {
         true
     }
 
+    /// Le provider accepte-t-il un identifiant de modele libre en plus de
+    /// la liste proposee ? Reference VoiceInk AIProvider.supportsCustomModelID
+    /// (cerebras, groq, gemini, anthropic, openAI, mistral). Parla l'active
+    /// aussi pour OpenRouter, dont VoiceInk charge le catalogue dynamiquement
+    /// alors que Parla n'en propose qu'une courte liste.
+    fn supports_custom_model_id(&self) -> bool {
+        false
+    }
+
     /// Effectue la requete d'enhancement et renvoie le texte brut de reponse.
     /// Le filtre <thinking>/<think>/<reasoning> est applique par le service.
     async fn chat_completion(

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Catch-up with VoiceInk 2.20 to 2.22 on models, plus a DirectML installer for
+AMD and Intel GPUs (issue #9).
+
+### Added
+- Custom enhancement model ID (issue #12, VoiceInk commit 7929145d `EnhancementModelPicker`): for OpenAI, Gemini, Anthropic, Mistral, Groq and Cerebras the model list now ends with "Custom model ID...", which opens a field to type any model the provider offers. The last custom ID is remembered per provider and offered again. OpenRouter accepts custom IDs too in Parla (VoiceInk loads the OpenRouter catalog dynamically, Parla only suggests a few models). Reasoning parameters stay tuned for the listed models only; a custom ID is sent as is.
+- DirectML installer (issue #9): every release now also ships `Parla_x.y.z_x64-directml-setup.exe`, which runs Parakeet on any DirectX 12 GPU (AMD, Intel, NVIDIA) through ONNX Runtime DirectML with an automatic CPU fallback. No extra native build is needed: the ONNX Runtime binaries Parla uses already include DirectML on Windows, the variant only selects the DirectML execution provider. GPU builds (this one and local CUDA builds) no longer self-update to the CPU installer: the update banner opens the release page instead.
+- Transcription models from VoiceInk 2.20 to 2.22: AssemblyAI Universal-3.6 Pro (realtime, 32 languages; outside realtime it falls back to Universal-3.5 Pro or Universal-2 depending on the language, like VoiceInk), ElevenLabs Scribe v2 Medical (batch, clinical vocabulary) and xAI Grok Voice Transcribe 2.0. Each AssemblyAI model now lists its own languages.
+
+### Changed
+- Enhancement model lists aligned on VoiceInk 2.22: OpenAI gpt-6-luna (default) and gpt-6-sol on top of the GPT-5.x and 4.1 families; Gemini gemini-3.8-flash (default); Anthropic claude-sonnet-5-5 (default) and claude-haiku-5-5; Cerebras qwen-3.8-27b (default) and gpt-oss-120b; Groq qwen/qwen3.8-27b (default) and the gpt-oss models; OpenRouter suggests qwen/qwen3.8-27b first. Reasoning parameters follow VoiceInk `ReasoningConfig.swift` (no reasoning for GPT-6 and GPT-5.x, "low" thinking for Gemini 3.8 Flash, no reasoning for Qwen 3.8 on Groq and Cerebras).
+- OpenAI GPT-5.x / GPT-6 requests now use temperature 0.3 when reasoning is set to "none", like VoiceInk; a GPT-5 / GPT-6 model without that setting (custom ID) keeps 1.0, the only value OpenAI accepts there.
+- xAI streaming uses `endpointing=100` with `smart_turn=0.5` and both xAI batch and streaming send the custom vocabulary as `keyterm`, following LLMkit's Grok Voice Transcribe 2.0 client. ElevenLabs batch removes disfluencies (`no_verbatim`) and sends the custom vocabulary as `keyterms`. AssemblyAI realtime sends the language as `language_codes`, the format LLMkit now uses.
+- Retired cloud model IDs are migrated once at launch, in the current selection and in Power Mode profiles: Grok STT to Grok Voice Transcribe 2.0, AssemblyAI Universal-3 Pro / Universal-Streaming to Universal-3.5 Pro, Soniox v4 to v5, Cartesia Ink Whisper to Ink 2.
+
+### Fixed
+- System audio mute restoration, following VoiceInk 2.21 (commit af772a81): Parla now remembers which output device it muted and restores that device, not whatever device is the default when the recording stops (plugging headphones in during a dictation used to leave the speakers muted). A mute applied by Parla is also restored when the setting is turned off during the recording, and a device the user had muted is never touched.
+
+
 ## [0.6.1] - 2026-09-23
 
 Bug-fix release: the clipboard crash reported in issue #13, plus the VoiceInk

@@ -27,10 +27,11 @@ use crate::enhancement::provider::{
 
 pub struct AnthropicProvider;
 
-// VoiceInk 2.13 AIService.availableModels (.anthropic).
+// VoiceInk 2.22 AIService.availableModels (.anthropic), commit fd3fa13d
+// "Update Anthropic models to Claude Sonnet 5.5 and Haiku 5.5".
 const MODELS: &[&str] = &[
-    "claude-sonnet-5",
-    "claude-haiku-4-5",
+    "claude-sonnet-5-5",
+    "claude-haiku-5-5",
 ];
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -48,7 +49,13 @@ impl LLMProvider for AnthropicProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "claude-sonnet-5"
+        "claude-sonnet-5-5"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://api.anthropic.com/v1/messages"

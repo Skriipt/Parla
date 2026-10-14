@@ -132,6 +132,10 @@ export type LLMProviderInfo = {
   models: string[];
   requires_api_key: boolean;
   has_api_key: boolean;
+  /** VoiceInk supportsCustomModelID : identifiant de modele libre accepte. */
+  supports_custom_model_id: boolean;
+  /** Dernier identifiant libre saisi pour ce provider. */
+  custom_model_id: string | null;
 };
 
 export type LLMSelection = {

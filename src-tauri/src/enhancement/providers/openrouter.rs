@@ -14,7 +14,11 @@ use super::openai_compat;
 
 pub struct OpenRouterProvider;
 
+// Courte liste de suggestions ; VoiceInk 2.22 charge le catalogue OpenRouter
+// dynamiquement avec pour defaut qwen/qwen3.8-27b. Parla accepte un
+// identifiant libre a la place.
 const MODELS: &[&str] = &[
+    "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
     "anthropic/claude-sonnet-4-6",
     "google/gemini-2.5-pro",
@@ -33,7 +37,13 @@ impl LLMProvider for OpenRouterProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "openai/gpt-oss-120b"
+        "qwen/qwen3.8-27b"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://openrouter.ai/api/v1/chat/completions"

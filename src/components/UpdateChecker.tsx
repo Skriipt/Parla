@@ -8,6 +8,10 @@
 //   'Installer'. Le user peut Dismiss pour masquer pendant la session.
 // - Progress du download stream via le callback contentLength / downloaded.
 // - Une fois downloaded : relaunch() pour redemarrer sur la nouvelle version.
+// - Builds GPU (DirectML de la CI, CUDA compile localement) : latest.json ne
+//   pointe que vers l'installeur CPU, l'installer en place ferait perdre
+//   l'acceleration. Le bouton ouvre donc la page de la release pour que
+//   l'utilisateur telecharge la meme variante.
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,8 +19,12 @@ import { Download, RefreshCw, X } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+
+const RELEASES_URL = "https://github.com/LitteRabbit-37/Parla/releases";
 
 type Status = "idle" | "checking" | "available" | "downloading" | "installed";
 
@@ -30,6 +38,14 @@ export function UpdateChecker() {
   } | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gpuBuild, setGpuBuild] = useState(false);
+
+  useEffect(() => {
+    api
+      .parakeetExecutionProvider()
+      .then((ep) => setGpuBuild(ep !== "cpu"))
+      .catch(() => setGpuBuild(false));
+  }, []);
 
   const runCheck = useCallback(async () => {
     try {
@@ -58,6 +74,10 @@ export function UpdateChecker() {
 
   async function install() {
     if (!update) return;
+    if (gpuBuild) {
+      openUrl(`${RELEASES_URL}/tag/v${update.version}`).catch(console.error);
+      return;
+    }
     try {
       setStatus("downloading");
       setError(null);
@@ -100,6 +120,11 @@ export function UpdateChecker() {
         {status === "available" && update && (
           <span>
             {t("updater.newVersion", { version: update.version })}
+            {gpuBuild && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                {t("updater.gpuBuildHint")}
+              </span>
+            )}
             {update.date && (
               <span className="ml-2 text-xs text-muted-foreground">
                 ({update.date})
@@ -122,7 +147,7 @@ export function UpdateChecker() {
       {status === "available" && (
         <Button size="sm" onClick={install}>
           <RefreshCw className="h-3.5 w-3.5" />
-          {t("updater.install")}
+          {gpuBuild ? t("updater.openRelease") : t("updater.install")}
         </Button>
       )}
       <Button

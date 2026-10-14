@@ -140,7 +140,9 @@
     "install": "Installer",
     "hide": "Masquer",
     "downloading": "Telechargement{{percent}}...",
-    "installed": "Installee - redemarrage..."
+    "installed": "Installee - redemarrage...",
+    "gpuBuildHint": "Build GPU : telechargez la meme variante depuis la page de la release.",
+    "openRelease": "Ouvrir la release"
   },
   "settings": {
     "title": "Reglages",
@@ -401,7 +403,9 @@
     "keyDeleted": "Cle supprimee",
     "activePrompt": "Prompt actif",
     "predefined": "(predefini)",
-    "currentModel": "{{model}} (actuel)"
+    "customModelOption": "Identifiant personnalise...",
+    "customModelIdPlaceholder": "Identifiant du modele, ex. gpt-6-luna",
+    "customModelIdHint": "N'importe quel identifiant propose par le provider. Il est envoye tel quel ; Parla n'ajuste les reglages de raisonnement que pour les modeles de la liste."
   },
   "screenContext": {
     "title": "Contexte fenetre active (OCR)",
@@ -658,7 +662,8 @@
     "historyEmpty": "L'historique est vide.",
     "lastTranscriptionEmpty": "La derniere transcription est vide.",
     "audioMissing": "Impossible de reessayer : le fichier audio de la derniere transcription est introuvable.",
-    "recordingInProgress": "Un enregistrement est en cours."
+    "recordingInProgress": "Un enregistrement est en cours.",
+    "assemblyaiRealtimeOnly": "AssemblyAI ne prend en charge cette langue qu'en temps reel. Utilisez la transcription en temps reel ou choisissez une autre langue."
   },
   "prompts": {
     "default": {

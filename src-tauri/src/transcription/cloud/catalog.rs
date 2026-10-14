@@ -63,11 +63,31 @@ const XAI_LANGS: &[&str] = &[
     "th", "tr", "vi",
 ];
 
-/// AssemblyAI Universal : 6 langues + auto. La liste est celle declaree par
-/// VoiceInk AssemblyAIProvider.swift (la realtime / streaming list, identique
-/// pour les 2 modeles cote Parla puisqu'on ne switche pas batch/streaming).
-const ASSEMBLYAI_LANGS: &[&str] =
-    &["auto", "de", "en", "es", "fr", "it", "pt"];
+/// AssemblyAI : une liste par modele, VoiceInk AssemblyAIProvider.Languages
+/// (2.22, commit 4798ce0e "Add AssemblyAI Universal 3.6 Pro support").
+/// Universal-3.6 Pro : 32 langues, realtime.
+pub(crate) const ASSEMBLYAI_U36_LANGS: &[&str] = &[
+    "auto", "af", "ar", "yue", "ca", "da", "nl", "en", "et", "fi", "fr", "gl",
+    "de", "he", "hi", "it", "ja", "ko", "zh", "mr", "no", "nn", "fa", "pt",
+    "ro", "ru", "es", "sv", "tr", "ur", "vi", "xh", "zu",
+];
+/// Universal-3.5 Pro : 19 langues.
+pub(crate) const ASSEMBLYAI_U35_LANGS: &[&str] = &[
+    "auto", "en", "es", "fr", "de", "it", "pt", "ar", "da", "nl", "he", "hi",
+    "ja", "zh", "vi", "fi", "no", "sv", "tr", "ca",
+];
+/// Universal-2 : 90+ langues.
+pub(crate) const ASSEMBLYAI_U2_LANGS: &[&str] = &[
+    "auto", "en", "en_au", "en_uk", "en_us", "es", "fr", "de", "it", "pt", "nl",
+    "hi", "ja", "zh", "fi", "ko", "pl", "ru", "tr", "uk", "vi", "af", "sq",
+    "am", "ar", "hy", "as", "az", "ba", "eu", "be", "bn", "bs", "br", "bg",
+    "my", "ca", "hr", "cs", "da", "et", "fo", "gl", "ka", "el", "gu", "ht",
+    "ha", "haw", "he", "hu", "is", "id", "jw", "kn", "kk", "km", "lo", "la",
+    "lv", "ln", "lt", "lb", "mk", "mg", "ms", "ml", "mt", "mi", "mr", "mn",
+    "ne", "no", "nn", "oc", "pa", "ps", "fa", "ro", "sa", "sr", "sn", "sd",
+    "si", "sk", "sl", "so", "su", "sw", "sv", "tl", "tg", "ta", "tt", "te",
+    "th", "bo", "tk", "ur", "uz", "cy", "yi", "yo",
+];
 
 /// Cartesia Ink 2 : anglais uniquement, PAS d'auto-detect (langue
 /// obligatoire dans la query string). Source CartesiaProvider.swift
@@ -204,6 +224,18 @@ pub const CLOUD_MODELS: &[CloudModelInfo] = &[
     },
     CloudModelInfo {
         provider_id: "elevenlabs",
+        model_id: "scribe_v2_medical",
+        display_name: "ElevenLabs Scribe v2 Medical",
+        supports_batch: true,
+        supports_streaming: false,
+        multilingual: true,
+        notes: "Optimise pour l'audio clinique et la terminologie medicale. Transcrit a l'arret de l'enregistrement, sans realtime.",
+        speed: 0.7,
+        accuracy: 0.98,
+        language_codes: ELEVENLABS_LANGS,
+    },
+    CloudModelInfo {
+        provider_id: "elevenlabs",
         model_id: "scribe_v2",
         display_name: "ElevenLabs Scribe v2 Realtime",
         supports_batch: true,
@@ -331,8 +363,8 @@ pub const CLOUD_MODELS: &[CloudModelInfo] = &[
     // xAI
     CloudModelInfo {
         provider_id: "xai",
-        model_id: "grok-stt",
-        display_name: "Grok (xAI)",
+        model_id: "grok-voice-transcribe-2.0",
+        display_name: "Grok Voice Transcribe 2.0 (xAI)",
         supports_batch: true,
         supports_streaming: true,
         multilingual: true,
@@ -357,6 +389,18 @@ pub const CLOUD_MODELS: &[CloudModelInfo] = &[
     // AssemblyAI
     CloudModelInfo {
         provider_id: "assemblyai",
+        model_id: "universal-3-6-pro",
+        display_name: "Universal-3.6 Pro (AssemblyAI)",
+        supports_batch: true,
+        supports_streaming: true,
+        multilingual: true,
+        notes: "Modele realtime phare, 32 langues. Hors realtime (reessayer) : Universal-3.5 Pro ou Universal-2 selon la langue.",
+        speed: 0.94,
+        accuracy: 0.98,
+        language_codes: ASSEMBLYAI_U36_LANGS,
+    },
+    CloudModelInfo {
+        provider_id: "assemblyai",
         model_id: "universal-3-5-pro",
         display_name: "Universal-3.5 Pro (AssemblyAI)",
         supports_batch: true,
@@ -365,7 +409,7 @@ pub const CLOUD_MODELS: &[CloudModelInfo] = &[
         notes: "Modele AssemblyAI le plus precis, avec realtime. Batch via upload + poll.",
         speed: 0.94,
         accuracy: 0.98,
-        language_codes: ASSEMBLYAI_LANGS,
+        language_codes: ASSEMBLYAI_U35_LANGS,
     },
     CloudModelInfo {
         provider_id: "assemblyai",
@@ -377,9 +421,30 @@ pub const CLOUD_MODELS: &[CloudModelInfo] = &[
         notes: "Universal-2 batch, 90+ langues. Plus rapide que Universal-3.5 Pro, sans realtime (VoiceInk 2.13).",
         speed: 0.96,
         accuracy: 0.92,
-        language_codes: ASSEMBLYAI_LANGS,
+        language_codes: ASSEMBLYAI_U2_LANGS,
     },
 ];
+
+/// Successeur d'un identifiant de modele cloud retire du catalogue, pour
+/// migrer les reglages et profils Power Mode existants. None = identifiant
+/// toujours valide (ou inconnu).
+pub fn legacy_cloud_model_successor(provider_id: &str, model_id: &str) -> Option<&'static str> {
+    match (provider_id, model_id) {
+        // Parla < 0.6.1 (VoiceInk 2.13 : Universal-3.5 Pro remplace
+        // Universal-3 Pro et Universal-Streaming en realtime).
+        (
+            "assemblyai",
+            "universal-3-pro" | "u3-rt-pro" | "universal-streaming" | "universal-streaming-english"
+            | "universal-streaming-multilingual",
+        ) => Some("universal-3-5-pro"),
+        ("soniox", "stt-async-v4") => Some("stt-async-v5"),
+        ("soniox", "stt-rt-v4") => Some("stt-rt-v5"),
+        ("cartesia", "ink-whisper") => Some("ink-2"),
+        // Parla < 0.6.2 (VoiceInk 2.20 : Grok Voice Transcribe 2.0).
+        ("xai", "grok-stt") => Some("grok-voice-transcribe-2.0"),
+        _ => None,
+    }
+}
 
 /// Lookup d'un provider par id. Utile pour resoudre un id store -> info.
 #[allow(dead_code)]
@@ -495,6 +560,41 @@ mod tests {
                 "modele {} sans langues",
                 m.model_id
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod catalog_tests {
+    use super::*;
+
+    #[test]
+    fn legacy_ids_map_to_cataloged_models() {
+        for (p, m) in [
+            ("assemblyai", "universal-3-pro"),
+            ("assemblyai", "universal-streaming"),
+            ("soniox", "stt-async-v4"),
+            ("soniox", "stt-rt-v4"),
+            ("cartesia", "ink-whisper"),
+            ("xai", "grok-stt"),
+        ] {
+            let next = legacy_cloud_model_successor(p, m).expect("successeur attendu");
+            assert!(
+                CLOUD_MODELS.iter().any(|c| c.provider_id == p && c.model_id == next),
+                "{p}/{next} absent du catalogue"
+            );
+        }
+        assert_eq!(legacy_cloud_model_successor("groq", "whisper-large-v3-turbo"), None);
+    }
+
+    #[test]
+    fn current_models_present() {
+        for (p, m) in [
+            ("assemblyai", "universal-3-6-pro"),
+            ("elevenlabs", "scribe_v2_medical"),
+            ("xai", "grok-voice-transcribe-2.0"),
+        ] {
+            assert!(CLOUD_MODELS.iter().any(|c| c.provider_id == p && c.model_id == m));
         }
     }
 }

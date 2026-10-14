@@ -12,9 +12,10 @@ use super::openai_compat;
 
 pub struct GeminiProvider;
 
-// VoiceInk 2.13 AIService.availableModels (.gemini), commits 304db11
-// "Gemini 3.7 flash support" + 6afbd81.
+// VoiceInk 2.22 AIService.availableModels (.gemini), commit b890763a
+// "Add Gemini 3.8 Flash as the default enhancement model".
 const MODELS: &[&str] = &[
+    "gemini-3.8-flash",
     "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
@@ -36,7 +37,13 @@ impl LLMProvider for GeminiProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "gemini-3.7-flash"
+        "gemini-3.8-flash"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"

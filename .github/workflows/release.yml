@@ -99,6 +99,8 @@ jobs:
 
             Both variants run Whisper, Parakeet and llama.cpp on CPU and work on every Windows 10 / 11 machine of their respective architecture. Auto-updater is wired via `latest.json` so future releases install themselves.
 
+            A third installer, `Parla_x.y.z_x64-directml-setup.exe`, runs Parakeet on any DirectX 12 GPU (AMD, Intel, NVIDIA) through ONNX Runtime DirectML and falls back to CPU if the GPU cannot be used. Whisper and the local LLM stay on CPU in that variant. It does not update itself: download the same variant again for new releases.
+
             Users with an NVIDIA GPU who want CUDA acceleration can build Parla themselves from source - see [BUILDING.md](https://github.com/LitteRabbit-37/Parla/blob/main/BUILDING.md#cuda-build) for the recipe.
           releaseDraft: true
           prerelease: false
@@ -109,6 +111,70 @@ jobs:
         with:
           name: parla-${{ matrix.arch }}-installer
           path: src-tauri/target/${{ matrix.rust-target }}/release/bundle/nsis/
+          if-no-files-found: error
+
+  # DirectML variant (x64 only, issue #9). The pyke ONNX Runtime binaries
+  # that ort downloads are always compiled with DirectML on Windows (ort-sys
+  # build/static_link links DirectML / D3D12 in every Windows build), so this
+  # job costs no extra native compilation : the `directml-onnx` feature only
+  # makes Parakeet request the DirectML execution provider (CPU fallback
+  # built in). No updater artifacts : latest.json keeps pointing to the CPU
+  # installer and the app sends GPU builds to the release page instead.
+  # Runs after `cpu` so the draft release exists, then attaches the renamed
+  # installer to it.
+  directml:
+    needs: cpu
+    name: directml (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          key: directml-x64
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build (DirectML x64)
+        run: npm run tauri build -- --target x86_64-pc-windows-msvc --features directml-onnx
+
+      - name: Rename installer
+        id: rename
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe | Select-Object -First 1
+          if (-not $src) { throw "DirectML installer not found" }
+          $name = $src.Name -replace '_x64-setup\.exe$', '_x64-directml-setup.exe'
+          $dst = Join-Path $src.DirectoryName $name
+          Move-Item $src.FullName $dst -Force
+          "path=$dst" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Attach to the draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" "${{ steps.rename.outputs.path }}" --clobber --repo "${{ github.repository }}"
+
+      - name: Upload DirectML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: parla-x64-directml-installer
+          path: ${{ steps.rename.outputs.path }}
           if-no-files-found: error
 
   # NOTE : GitHub's public windows-latest runner (4 cores, 16 GB, 14 GB

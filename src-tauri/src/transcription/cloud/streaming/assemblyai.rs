@@ -1,10 +1,11 @@
 // AssemblyAI Universal streaming temps reel via WebSocket.
 //
-// Reference VoiceInk : LLMkit AssemblyAIStreamingClient.swift (95b29c2).
+// Reference VoiceInk : LLMkit AssemblyAIStreamingClient.swift (37100b2,
+// VoiceInk 2.22).
 // WSS    : wss://streaming.assemblyai.com/v3/ws
 // Query  : sample_rate=16000, encoding=pcm_s16le,
-//          speech_model=universal-3-5-pro&mode=balanced (seul modele
-//          realtime chez VoiceInk 2.13), + language_code si explicite,
+//          speech_model=<universal-3-6-pro | universal-3-5-pro>&mode=balanced,
+//          + language_codes=["<code>"] (tableau JSON) si explicite,
 //          + keyterms_prompt (JSON array, 100 max).
 //          Les anciens identifiants (universal-3-pro / u3-rt-pro /
 //          universal-streaming*) gardent leur ancienne query pour ne pas
@@ -166,14 +167,17 @@ where
 }
 
 fn build_streaming_url(config: &StreamingConfig) -> String {
-    if is_universal35_pro(&config.model) {
-        let mut url = String::from(
-            "wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&speech_model=universal-3-5-pro&mode=balanced",
+    if is_universal_pro_realtime(&config.model) {
+        let mut url = format!(
+            "wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&speech_model={}&mode=balanced",
+            config.model
         );
         if let Some(lang) = config.language.as_deref() {
             if !lang.is_empty() && lang != "auto" {
-                url.push_str("&language_code=");
-                url.push_str(&urlencoding::encode(lang));
+                if let Some(codes) = json_array_string(&[lang.to_string()]) {
+                    url.push_str("&language_codes=");
+                    url.push_str(&urlencoding::encode(&codes));
+                }
             }
         }
         let keyterms = normalize_keyterms(&config.custom_vocabulary);
@@ -223,10 +227,10 @@ fn build_streaming_url(config: &StreamingConfig) -> String {
     url
 }
 
-/// Modele realtime courant (VoiceInk 2.13 / LLMkit : seul universal-3-5-pro
-/// est accepte par le client streaming).
-fn is_universal35_pro(model: &str) -> bool {
-    model == "universal-3-5-pro"
+/// Modeles realtime courants (VoiceInk 2.22) : le client LLMkit passe le
+/// nom du modele tel quel dans `speech_model`.
+fn is_universal_pro_realtime(model: &str) -> bool {
+    matches!(model, "universal-3-6-pro" | "universal-3-5-pro")
 }
 
 fn is_universal3_pro(model: &str) -> bool {
@@ -400,15 +404,17 @@ mod tests {
         assert!(url.starts_with(
             "wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&speech_model=universal-3-5-pro&mode=balanced"
         ));
-        assert!(url.contains("&language_code=fr"));
+        assert!(url.contains("&language_codes=%5B%22fr%22%5D"));
         assert!(url.contains("&keyterms_prompt="));
         assert!(!url.contains("min_turn_silence"));
         let auto = StreamingConfig {
-            model: "universal-3-5-pro".into(),
+            model: "universal-3-6-pro".into(),
             language: Some("auto".into()),
             ..Default::default()
         };
-        assert!(!build_streaming_url(&auto).contains("language_code"));
+        let auto_url = build_streaming_url(&auto);
+        assert!(auto_url.contains("speech_model=universal-3-6-pro&mode=balanced"));
+        assert!(!auto_url.contains("language_code"));
     }
 
     #[test]

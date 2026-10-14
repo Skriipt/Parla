@@ -12,11 +12,11 @@ use super::openai_compat;
 
 pub struct CerebrasProvider;
 
-// VoiceInk 2.13 AIService.availableModels (.cerebras).
+// VoiceInk 2.22 AIService.availableModels (.cerebras), commit 246599e0
+// "Support qwen 3.8 model".
 const MODELS: &[&str] = &[
+    "qwen-3.8-27b",
     "gpt-oss-120b",
-    "gemma-4-31b",
-    "zai-glm-4.7",
 ];
 
 #[async_trait]
@@ -31,7 +31,13 @@ impl LLMProvider for CerebrasProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "gpt-oss-120b"
+        "qwen-3.8-27b"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://api.cerebras.ai/v1/chat/completions"

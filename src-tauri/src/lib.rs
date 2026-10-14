@@ -258,6 +258,9 @@ pub fn run() {
                     }
                 }
             }
+            // Identifiants de modeles cloud retires (Grok STT, AssemblyAI
+            // Universal-3 Pro, Soniox v4, Cartesia Ink Whisper).
+            commands::settings::migrate_legacy_cloud_model_ids(&handle);
             setup_hotkeys(handle.clone());
             // Timeout batch cloud persiste (VoiceInk CloudTranscriptionSettings).
             transcription::cloud::http::set_batch_timeout_secs(

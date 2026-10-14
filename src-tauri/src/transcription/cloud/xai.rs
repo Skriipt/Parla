@@ -69,6 +69,13 @@ impl CloudTranscriptionProvider for XaiProvider {
             form = form.text("format", "true");
         }
 
+        // Pas de champ `model` : xAI choisit son modele STT par defaut
+        // (Grok Voice Transcribe 2.0), comme LLMkit XAIClient (37100b2).
+        // Vocabulaire personnalise : un champ `keyterm` par terme.
+        for term in keyterms(&request.custom_vocabulary) {
+            form = form.text("keyterm", term);
+        }
+
         form = form.part("file", wav_part_from_path(wav_path).await?);
 
         let client = batch_client()?;
@@ -92,5 +99,31 @@ impl CloudTranscriptionProvider for XaiProvider {
             Ok(r) => Ok(r.text.unwrap_or_default()),
             Err(_) => Ok(String::from_utf8_lossy(&body).trim().to_string()),
         }
+    }
+}
+
+/// LLMkit XAIClient / XAIStreamingClient : termes trimmes, non vides,
+/// 50 caracteres max, 100 max.
+pub(crate) fn keyterms(raw: &[String]) -> Vec<String> {
+    raw.iter()
+        .map(|t| t.trim())
+        .filter(|t| !t.is_empty() && t.chars().count() <= 50)
+        .take(100)
+        .map(String::from)
+        .collect()
+}
+
+#[cfg(test)]
+mod keyterm_tests {
+    use super::keyterms;
+
+    #[test]
+    fn keyterms_trim_filter_and_cap() {
+        let mut raw: Vec<String> = vec![" Parla ".into(), "".into(), "y".repeat(51)];
+        raw.extend((0..150).map(|i| format!("t{i}")));
+        let k = keyterms(&raw);
+        assert_eq!(k.first().map(String::as_str), Some("Parla"));
+        assert_eq!(k.len(), 100);
+        assert!(k.iter().all(|t| t.chars().count() <= 50));
     }
 }

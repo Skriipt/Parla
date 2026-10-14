@@ -34,6 +34,12 @@ impl LLMProvider for MistralProvider {
     fn default_model(&self) -> &'static str {
         "mistral-small-latest"
     }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
+    }
     fn endpoint(&self) -> &'static str {
         "https://api.mistral.ai/v1/chat/completions"
     }

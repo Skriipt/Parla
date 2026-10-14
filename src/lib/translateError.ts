@@ -75,6 +75,7 @@ const ERROR_MAP: Array<[RegExp, ErrorMapping]> = [
   [/^PARLA_ERR:lastTranscriptionEmpty$/, { i18nKey: "errors.lastTranscriptionEmpty" }],
   [/^PARLA_ERR:audioMissing$/, { i18nKey: "errors.audioMissing" }],
   [/^PARLA_ERR:recordingInProgress$/, { i18nKey: "errors.recordingInProgress" }],
+  [/^PARLA_ERR:assemblyaiRealtimeOnly$/, { i18nKey: "errors.assemblyaiRealtimeOnly" }],
 ];
 
 /// Traduit un message d'erreur backend en chaine localisee. Si le code

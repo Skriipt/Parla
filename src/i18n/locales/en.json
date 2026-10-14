@@ -140,7 +140,9 @@
     "install": "Install",
     "hide": "Hide",
     "downloading": "Downloading{{percent}}...",
-    "installed": "Installed - restarting..."
+    "installed": "Installed - restarting...",
+    "gpuBuildHint": "GPU build: download the same variant from the release page.",
+    "openRelease": "Open release"
   },
   "settings": {
     "title": "Settings",
@@ -401,7 +403,9 @@
     "keyDeleted": "Key deleted",
     "activePrompt": "Active prompt",
     "predefined": "(predefined)",
-    "currentModel": "{{model}} (current)"
+    "customModelOption": "Custom model ID...",
+    "customModelIdPlaceholder": "Model ID, e.g. gpt-6-luna",
+    "customModelIdHint": "Any model ID your provider offers. It is sent as is; Parla only tunes reasoning settings for the listed models."
   },
   "screenContext": {
     "title": "Active window context (OCR)",
@@ -658,7 +662,8 @@
     "historyEmpty": "The history is empty.",
     "lastTranscriptionEmpty": "The last transcription is empty.",
     "audioMissing": "Cannot retry: the audio file of the last transcription is missing.",
-    "recordingInProgress": "A recording is in progress."
+    "recordingInProgress": "A recording is in progress.",
+    "assemblyaiRealtimeOnly": "AssemblyAI supports this language only in realtime. Use realtime transcription or pick another language."
   },
   "prompts": {
     "default": {

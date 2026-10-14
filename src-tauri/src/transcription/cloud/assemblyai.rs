@@ -22,6 +22,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use super::catalog::{ASSEMBLYAI_U2_LANGS, ASSEMBLYAI_U35_LANGS};
 use super::http::{batch_client, map_http_err};
 use super::provider::{CloudTranscriptionProvider, TranscribeRequest};
 
@@ -86,12 +87,15 @@ impl CloudTranscriptionProvider for AssemblyAiProvider {
         // 1. Upload
         let upload_url = upload(&client, api_key, bytes).await?;
 
-        // 2. Cree le job
-        let speech_models = speech_models_for(&request.model);
+        // 2. Cree le job. Universal-3.6 Pro est realtime uniquement : hors
+        // streaming (reessayer la derniere transcription), VoiceInk bascule
+        // sur Universal-3.5 Pro ou Universal-2 selon la langue.
+        let batch_model = batch_model_for(&request.model, request.language.as_deref())?;
+        let speech_models = speech_models_for(&batch_model);
         let primary = speech_models
             .first()
             .cloned()
-            .unwrap_or_else(|| request.model.clone());
+            .unwrap_or_else(|| batch_model.clone());
         let keyterms = normalize_keyterms(&request.custom_vocabulary, keyterms_limit(&primary));
 
         let mut payload = serde_json::Map::new();
@@ -217,6 +221,23 @@ fn speech_models_for(model: &str) -> Vec<String> {
     }
 }
 
+/// VoiceInk AssemblyAIProvider.batchModel(for:language:) (2.22).
+fn batch_model_for(model: &str, language: Option<&str>) -> Result<String> {
+    if model != "universal-3-6-pro" {
+        return Ok(model.to_string());
+    }
+    match language {
+        Some(lang) if !lang.is_empty() && lang != "auto" && !ASSEMBLYAI_U35_LANGS.contains(&lang) => {
+            if ASSEMBLYAI_U2_LANGS.contains(&lang) {
+                Ok("universal-2".into())
+            } else {
+                anyhow::bail!("PARLA_ERR:assemblyaiRealtimeOnly")
+            }
+        }
+        _ => Ok("universal-3-5-pro".into()),
+    }
+}
+
 fn keyterms_limit(primary_model: &str) -> usize {
     if primary_model == "universal-2" {
         KEYTERMS_LIMIT_U2
@@ -296,6 +317,21 @@ mod tests {
             normalize_keyterms(&raw, KEYTERMS_LIMIT_U35),
             vec!["Docker".to_string()]
         );
+    }
+
+    #[test]
+    fn universal36_batch_routing_follows_voiceink() {
+        assert_eq!(batch_model_for("universal-3-6-pro", None).unwrap(), "universal-3-5-pro");
+        assert_eq!(batch_model_for("universal-3-6-pro", Some("auto")).unwrap(), "universal-3-5-pro");
+        assert_eq!(batch_model_for("universal-3-6-pro", Some("fr")).unwrap(), "universal-3-5-pro");
+        // Coreen : pas en 3.5 Pro, present en Universal-2.
+        assert_eq!(batch_model_for("universal-3-6-pro", Some("ko")).unwrap(), "universal-2");
+        // Xhosa : realtime 3.6 uniquement.
+        assert_eq!(
+            batch_model_for("universal-3-6-pro", Some("xh")).unwrap_err().to_string(),
+            "PARLA_ERR:assemblyaiRealtimeOnly"
+        );
+        assert_eq!(batch_model_for("universal-2", Some("ko")).unwrap(), "universal-2");
     }
 
     #[test]

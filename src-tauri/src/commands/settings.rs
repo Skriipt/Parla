@@ -378,3 +378,47 @@ pub fn reset_escape_hint(app: AppHandle) -> Result<(), String> {
     store.delete(crate::transcription::engine::ESCAPE_HINT_KEY);
     store.save().map_err(|e| e.to_string())
 }
+
+// -- Legacy cloud model ids --------------------------------------------------
+
+/// Remplace, une fois au demarrage, les identifiants de modeles cloud retires
+/// du catalogue par leur successeur, dans la selection courante et dans les
+/// profils Power Mode (`catalog::legacy_cloud_model_successor`). Sans cela la
+/// page Modeles IA n'affiche plus le modele actif et le streaming n'est plus
+/// detecte pour ces identifiants.
+pub fn migrate_legacy_cloud_model_ids(app: &AppHandle) {
+    use crate::transcription::cloud::catalog::legacy_cloud_model_successor;
+
+    if let Ok(store) = app.store(STORE_FILE) {
+        let provider = store
+            .get("selected_cloud_provider")
+            .and_then(|v| v.as_str().map(String::from));
+        let model = store
+            .get("selected_cloud_model")
+            .and_then(|v| v.as_str().map(String::from));
+        if let (Some(p), Some(m)) = (provider, model) {
+            if let Some(next) = legacy_cloud_model_successor(&p, &m) {
+                store.set("selected_cloud_model", serde_json::Value::String(next.into()));
+                let _ = store.save();
+                tracing::info!(provider = %p, from = %m, to = next, "selected cloud model migrated");
+            }
+        }
+    }
+
+    if let Ok(mut configs) = crate::power_mode::config::load_all(app) {
+        let mut changed = false;
+        for c in configs.iter_mut() {
+            if let (Some(p), Some(m)) = (c.cloud_provider.as_deref(), c.cloud_model.as_deref()) {
+                if let Some(next) = legacy_cloud_model_successor(p, m) {
+                    c.cloud_model = Some(next.to_string());
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            if let Err(e) = crate::power_mode::config::save_all(app, &configs) {
+                tracing::warn!(error = %e, "power mode cloud model migration failed");
+            }
+        }
+    }
+}

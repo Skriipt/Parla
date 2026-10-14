@@ -12,8 +12,9 @@ use super::openai_compat;
 
 pub struct GroqProvider;
 
-// VoiceInk 2.13 AIService.availableModels (.groq).
+// VoiceInk 2.22 AIService.availableModels (.groq), commit 246599e0.
 const MODELS: &[&str] = &[
+    "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
 ];
@@ -30,7 +31,13 @@ impl LLMProvider for GroqProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "openai/gpt-oss-120b"
+        "qwen/qwen3.8-27b"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://api.groq.com/openai/v1/chat/completions"

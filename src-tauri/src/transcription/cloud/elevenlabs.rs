@@ -61,6 +61,13 @@ impl CloudTranscriptionProvider for ElevenLabsProvider {
             }
         }
 
+        // LLMkit ElevenLabsClient (VoiceInk 2.22) : hesitations retirees et
+        // vocabulaire personnalise envoye comme `keyterms`.
+        form = form.text("no_verbatim", "true");
+        for term in normalize_keyterms(&request.custom_vocabulary) {
+            form = form.text("keyterms", term);
+        }
+
         let client = batch_client()?;
         let resp = client
             .post("https://api.elevenlabs.io/v1/speech-to-text")
@@ -80,5 +87,52 @@ impl CloudTranscriptionProvider for ElevenLabsProvider {
         let parsed: ElevenLabsResponse = serde_json::from_slice(&body)
             .map_err(|e| anyhow!("parse JSON: {e}"))?;
         Ok(parsed.text)
+    }
+}
+
+/// LLMkit ElevenLabsClient.normalizedKeyterms : trim, 50 caracteres et
+/// 5 mots max, sans < > { } [ ] \\, dedup insensible a la casse, 1000 max.
+fn normalize_keyterms(raw: &[String]) -> Vec<String> {
+    const UNSUPPORTED: [char; 7] = ['<', '>', '{', '}', '[', ']', '\\'];
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for term in raw {
+        let trimmed = term.trim();
+        if trimmed.is_empty()
+            || trimmed.chars().count() > 50
+            || trimmed.split_whitespace().count() > 5
+            || trimmed.chars().any(|c| UNSUPPORTED.contains(&c))
+        {
+            continue;
+        }
+        if !seen.insert(trimmed.to_lowercase()) {
+            continue;
+        }
+        out.push(trimmed.to_string());
+        if out.len() == 1_000 {
+            break;
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod keyterm_tests {
+    use super::normalize_keyterms;
+
+    #[test]
+    fn batch_keyterms_follow_llmkit_rules() {
+        let raw: Vec<String> = vec![
+            " Docker ".into(),
+            "DOCKER".into(),
+            "one two three four five six".into(),
+            "a{b".into(),
+            "x".repeat(51),
+            "Kubernetes cluster".into(),
+        ];
+        assert_eq!(
+            normalize_keyterms(&raw),
+            vec!["Docker".to_string(), "Kubernetes cluster".to_string()]
+        );
     }
 }

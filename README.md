@@ -66,12 +66,15 @@ Compared to existing Windows dictation tools, Parla targets feature parity with 
 | Parakeet (local) | parakeet-tdt-0.6b-v2 (EN), parakeet-tdt-0.6b-v3 (25+ langues) | CUDA EP, DirectML EP, CPU |
 | VAD Silero | v5.1.2 (via `whisper-vad`) | CPU |
 | Groq | whisper-large-v3-turbo | - |
-| ElevenLabs | scribe_v1, scribe_v2 realtime | - |
+| ElevenLabs | scribe_v1, scribe_v2 realtime, scribe_v2_medical | - |
 | Deepgram | nova-3, nova-3-medical | - |
 | Mistral | voxtral-mini-latest, voxtral-mini-transcribe-realtime-2602 | - |
-| Soniox | stt-async-v4, stt-rt-v4 | - |
+| Soniox | stt-async-v5, stt-rt-v5 | - |
 | Speechmatics | speechmatics-enhanced | - |
-| Google Gemini | 2.5 Pro, 2.5 Flash, 3 Flash, 3.1 Pro | - |
+| Google Gemini | 2.5 Pro, 2.5 Flash | - |
+| AssemblyAI | Universal-3.6 Pro realtime, Universal-3.5 Pro, Universal-2 | - |
+| xAI | Grok Voice Transcribe 2.0 | - |
+| Cartesia | Ink 2 (English, realtime) | - |
 | Custom | Any OpenAI-compatible endpoint | - |
 
 ### Supported LLM enhancement providers
@@ -107,6 +110,10 @@ Auto-updater is built in: once installed, Parla checks `latest.json` on every st
 ### GPU acceleration (NVIDIA CUDA)
 
 The pre-built installer ships CPU-only because compiling whisper.cpp + llama.cpp + ggml-cuda does not fit in our public CI runners' budget. Users with an NVIDIA GPU who want CUDA acceleration (typically 3 to 10 times faster on large models) build Parla themselves from source - see [BUILDING.md](BUILDING.md#cuda-build) for the recipe. You will need the CUDA Toolkit 12.x installed plus Visual Studio 2022 with the C++ workload. The build takes 15 to 30 minutes on a reasonably recent desktop.
+
+### GPU acceleration for Parakeet on AMD / Intel (DirectML)
+
+Each release also ships `Parla_x.y.z_x64-directml-setup.exe`. It runs Parakeet on any DirectX 12 GPU (AMD, Intel, NVIDIA) through the ONNX Runtime DirectML execution provider and falls back to CPU automatically if the GPU cannot be used. Whisper and the local LLM stay on CPU in this variant. It does not update itself: when a new version is out, Parla opens the release page so you can download the same variant again.
 
 Once installed, Parla runs in the system tray. The default global shortcut for recording is configurable from the `Recorder` panel in the app.
 

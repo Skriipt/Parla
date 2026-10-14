@@ -12,9 +12,10 @@ use super::openai_compat;
 
 pub struct OpenAIProvider;
 
-// VoiceInk 2.13 AIService.availableModels (.openAI), commit af1c1bb
-// "feat: add gpt-5.6 models".
+// VoiceInk 2.22 AIService.availableModels (.openAI).
 const MODELS: &[&str] = &[
+    "gpt-6-luna",
+    "gpt-6-sol",
     "gpt-5.6-luna",
     "gpt-5.6-terra",
     "gpt-5.6-sol",
@@ -39,7 +40,13 @@ impl LLMProvider for OpenAIProvider {
         MODELS
     }
     fn default_model(&self) -> &'static str {
-        "gpt-5.6-luna"
+        "gpt-6-luna"
+    }
+    /// VoiceInk AIProvider.supportsCustomModelID (commit 7929145d) : la
+    /// liste ne fait que proposer des modeles, l'utilisateur peut saisir
+    /// n'importe quel identifiant accepte par le provider.
+    fn supports_custom_model_id(&self) -> bool {
+        true
     }
     fn endpoint(&self) -> &'static str {
         "https://api.openai.com/v1/chat/completions"

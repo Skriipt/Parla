@@ -140,7 +140,9 @@
     "install": "Instalar",
     "hide": "Ocultar",
     "downloading": "Descargando{{percent}}...",
-    "installed": "Instalada - reiniciando..."
+    "installed": "Instalada - reiniciando...",
+    "gpuBuildHint": "Version GPU: descarga la misma variante desde la pagina de la version.",
+    "openRelease": "Abrir la version"
   },
   "settings": {
     "title": "Ajustes",
@@ -401,7 +403,9 @@
     "keyDeleted": "Clave eliminada",
     "activePrompt": "Prompt activo",
     "predefined": "(predefinido)",
-    "currentModel": "{{model}} (actual)"
+    "customModelOption": "ID de modelo personalizado...",
+    "customModelIdPlaceholder": "ID del modelo, p. ej. gpt-6-luna",
+    "customModelIdHint": "Cualquier ID de modelo que ofrezca el proveedor. Se envia tal cual; Parla solo ajusta el razonamiento para los modelos de la lista."
   },
   "screenContext": {
     "title": "Contexto de ventana activa (OCR)",
@@ -658,7 +662,8 @@
     "historyEmpty": "El historial esta vacio.",
     "lastTranscriptionEmpty": "La ultima transcripcion esta vacia.",
     "audioMissing": "No se puede reintentar: falta el archivo de audio de la ultima transcripcion.",
-    "recordingInProgress": "Hay una grabacion en curso."
+    "recordingInProgress": "Hay una grabacion en curso.",
+    "assemblyaiRealtimeOnly": "AssemblyAI solo admite este idioma en tiempo real. Usa la transcripcion en tiempo real o elige otro idioma."
   },
   "prompts": {
     "default": {

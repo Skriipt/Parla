@@ -189,35 +189,69 @@ pub fn should_skip_short(app: &AppHandle, text: &str) -> bool {
     words <= th
 }
 
-/// Construit la temperature appliquee. VoiceInk AIService L~140.
-fn temperature_for(model: &str) -> f32 {
-    if model.starts_with("gpt-5") {
+/// Temperature appliquee. VoiceInk 2.22 (AIChatCompletionService) envoie
+/// 0.3 a tous les providers OpenAI-compatibles, y compris GPT-5.x / GPT-6
+/// pour lesquels il demande reasoning "none" (seul cas ou OpenAI accepte une
+/// temperature sur ces modeles). Parla garde 1.0 pour un modele GPT-5 / GPT-6
+/// sans reasoning "none" (identifiant libre ou ancien modele comme
+/// gpt-5-mini), qui refuserait toute autre valeur.
+fn temperature_for(model: &str, reasoning: &ReasoningConfig) -> f32 {
+    let is_reasoning_gpt = model.starts_with("gpt-5") || model.starts_with("gpt-6");
+    if is_reasoning_gpt && reasoning.effort.as_deref() != Some("none") {
         1.0
     } else {
         0.3
     }
 }
 
-/// Reasoning config par (provider, model). Reference VoiceInk 2.13
+const KEY_LLM_CUSTOM_MODEL_PREFIX: &str = "llm_custom_model_id_";
+
+/// Dernier identifiant libre saisi pour ce provider (VoiceInk
+/// "\(provider)CustomModelID"), pour le reproposer quand l'utilisateur
+/// revient sur "Identifiant personnalise".
+pub fn get_custom_model_id(app: &AppHandle, provider_id: &str) -> Option<String> {
+    app.store(STORE_FILE)
+        .ok()?
+        .get(format!("{KEY_LLM_CUSTOM_MODEL_PREFIX}{provider_id}"))?
+        .as_str()
+        .map(String::from)
+        .filter(|s| !s.trim().is_empty())
+}
+
+pub fn set_custom_model_id(app: &AppHandle, provider_id: &str, model: &str) -> Result<()> {
+    let store = app
+        .store(STORE_FILE)
+        .map_err(|e| anyhow!("store: {e}"))?;
+    store.set(
+        format!("{KEY_LLM_CUSTOM_MODEL_PREFIX}{provider_id}"),
+        serde_json::Value::String(model.to_string()),
+    );
+    store.save().map_err(|e| anyhow!("store save: {e}"))
+}
+
+/// Reasoning config par (provider, model). Reference VoiceInk 2.22
 /// Infrastructure/Providers/Enhancement/ReasoningConfig.swift :
-///  - OpenAI GPT-5.x : reasoning "none" explicite (GPT-4.1 : aucun param).
-///  - Gemini 3.7 Flash et 3.1 Pro Preview : niveau "low" (pas de "minimal").
+///  - OpenAI GPT-6 / GPT-5.x : reasoning "none" explicite (GPT-4.1 : aucun
+///    param).
+///  - Gemini 3.8 Flash, 3.7 Flash et 3.1 Pro Preview : niveau "low" (pas de
+///    "minimal").
 ///  - Gemini 3.6 Flash, 3.5 Flash(-Lite), 3.1 Flash-Lite : "minimal".
 ///  - Gemini 2.5 Flash-Lite : rien (thinking off par defaut).
 ///  - Cerebras gpt-oss-120b : "low" + reasoning_format hidden ;
-///    zai-glm-4.7 : "none".
-///  - Groq gpt-oss : "low" + include_reasoning false.
+///    qwen-3.8-27b : "none".
+///  - Groq gpt-oss : "low" + include_reasoning false ; qwen3.8-27b : "none".
+/// Un identifiant libre inconnu n'a aucun parametre de raisonnement.
 fn reasoning_for(provider_id: &str, model: &str) -> ReasoningConfig {
     let mut cfg = ReasoningConfig::default();
     match (provider_id, model) {
         (
             "openai",
-            "gpt-5.6-luna" | "gpt-5.6-terra" | "gpt-5.6-sol" | "gpt-5.5" | "gpt-5.4"
-            | "gpt-5.4-mini" | "gpt-5.4-nano",
+            "gpt-6-luna" | "gpt-6-sol" | "gpt-5.6-luna" | "gpt-5.6-terra" | "gpt-5.6-sol"
+            | "gpt-5.5" | "gpt-5.4" | "gpt-5.4-mini" | "gpt-5.4-nano",
         ) => {
             cfg.effort = Some("none".into());
         }
-        ("gemini", "gemini-3.7-flash" | "gemini-3.1-pro-preview") => {
+        ("gemini", "gemini-3.8-flash" | "gemini-3.7-flash" | "gemini-3.1-pro-preview") => {
             cfg.effort = Some("low".into());
         }
         (
@@ -236,13 +270,14 @@ fn reasoning_for(provider_id: &str, model: &str) -> ReasoningConfig {
             );
             cfg.extra_body = Some(map);
         }
-        ("cerebras", "zai-glm-4.7") => cfg.effort = Some("none".into()),
+        ("cerebras", "qwen-3.8-27b") => cfg.effort = Some("none".into()),
         ("groq", "openai/gpt-oss-120b" | "openai/gpt-oss-20b") => {
             cfg.effort = Some("low".into());
             let mut map = serde_json::Map::new();
             map.insert("include_reasoning".into(), serde_json::Value::Bool(false));
             cfg.extra_body = Some(map);
         }
+        ("groq", "qwen/qwen3.8-27b") => cfg.effort = Some("none".into()),
         _ => {}
     }
     cfg
@@ -378,12 +413,13 @@ pub async fn enhance_with_override(
         get_timeout(&app)
     };
 
+    let reasoning = reasoning_for(provider.id(), &model);
     let req = EnhancementRequest {
         system_prompt,
         user_message,
         model: model.clone(),
-        temperature: temperature_for(&model),
-        reasoning: reasoning_for(provider.id(), &model),
+        temperature: temperature_for(&model, &reasoning),
+        reasoning,
         timeout,
         endpoint_override,
     };
@@ -453,28 +489,43 @@ pub async fn enhance_with_override(
 mod tests {
     use super::*;
 
+    fn temp(provider: &str, model: &str) -> f32 {
+        temperature_for(model, &reasoning_for(provider, model))
+    }
+
     #[test]
-    fn temperature_for_gpt5_family() {
-        // VoiceInk : toute la famille gpt-5* prend 1.0.
-        assert_eq!(temperature_for("gpt-5"), 1.0);
-        assert_eq!(temperature_for("gpt-5.4"), 1.0);
-        assert_eq!(temperature_for("gpt-5-mini"), 1.0);
-        assert_eq!(temperature_for("gpt-5.4-nano"), 1.0);
+    fn temperature_for_gpt_reasoning_models() {
+        // VoiceInk 2.22 : 0.3 avec reasoning "none" (modeles listes).
+        assert_eq!(temp("openai", "gpt-6-luna"), 0.3);
+        assert_eq!(temp("openai", "gpt-5.4"), 0.3);
+        assert_eq!(temp("openai", "gpt-5.4-nano"), 0.3);
+        // Identifiant libre / ancien modele sans "none" : 1.0 sinon l'API
+        // refuse la requete.
+        assert_eq!(temp("openai", "gpt-5-mini"), 1.0);
+        assert_eq!(temp("openai", "gpt-6-unknown"), 1.0);
     }
 
     #[test]
     fn temperature_for_other_models() {
-        assert_eq!(temperature_for("gpt-4.1"), 0.3);
-        assert_eq!(temperature_for("claude-opus-4-6"), 0.3);
-        assert_eq!(temperature_for("gemini-2.5-pro"), 0.3);
-        assert_eq!(temperature_for("llama-3.3-70b-versatile"), 0.3);
-        assert_eq!(temperature_for(""), 0.3);
+        assert_eq!(temp("openai", "gpt-4.1"), 0.3);
+        assert_eq!(temp("anthropic", "claude-sonnet-5-5"), 0.3);
+        assert_eq!(temp("gemini", "gemini-3.8-flash"), 0.3);
+        assert_eq!(temp("groq", "qwen/qwen3.8-27b"), 0.3);
+        assert_eq!(temp("openai", ""), 0.3);
     }
 
     #[test]
     fn reasoning_for_openai_gpt5_flagship() {
         // VoiceInk ReasoningConfig.openAINoneReasoningModels.
-        for m in ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.4"] {
+        for m in [
+            "gpt-6-luna",
+            "gpt-6-sol",
+            "gpt-5.6-luna",
+            "gpt-5.6-terra",
+            "gpt-5.6-sol",
+            "gpt-5.5",
+            "gpt-5.4",
+        ] {
             let r = reasoning_for("openai", m);
             assert_eq!(r.effort, Some("none".into()), "{m}");
             assert!(r.extra_body.is_none());
@@ -491,7 +542,11 @@ mod tests {
 
     #[test]
     fn reasoning_for_gemini_flash() {
-        // 3.7 Flash et 3.1 Pro Preview ne supportent pas "minimal" -> "low".
+        // 3.8 / 3.7 Flash et 3.1 Pro Preview ne supportent pas "minimal" -> "low".
+        assert_eq!(
+            reasoning_for("gemini", "gemini-3.8-flash").effort,
+            Some("low".into())
+        );
         assert_eq!(
             reasoning_for("gemini", "gemini-3.7-flash").effort,
             Some("low".into())
@@ -529,10 +584,14 @@ mod tests {
     }
 
     #[test]
-    fn reasoning_for_cerebras_glm() {
-        let r = reasoning_for("cerebras", "zai-glm-4.7");
-        assert_eq!(r.effort, Some("none".into()));
-        assert!(r.extra_body.is_none());
+    fn reasoning_for_qwen() {
+        for (p, m) in [("cerebras", "qwen-3.8-27b"), ("groq", "qwen/qwen3.8-27b")] {
+            let r = reasoning_for(p, m);
+            assert_eq!(r.effort, Some("none".into()), "{p} {m}");
+            assert!(r.extra_body.is_none());
+        }
+        // zai-glm-4.7 a quitte la liste VoiceInk, plus de parametre dedie.
+        assert_eq!(reasoning_for("cerebras", "zai-glm-4.7").effort, None);
     }
 
     #[test]
@@ -547,7 +606,7 @@ mod tests {
 
     #[test]
     fn reasoning_for_unknown_provider() {
-        let r = reasoning_for("anthropic", "claude-opus-4-6");
+        let r = reasoning_for("anthropic", "claude-sonnet-5-5");
         assert_eq!(r.effort, None);
         assert!(r.extra_body.is_none());
     }

@@ -1,10 +1,13 @@
 // xAI Grok streaming temps reel via WebSocket.
 //
-// Reference VoiceInk : LLMkit XAIStreamingClient.swift.
-// WSS    : wss://api.x.ai/v1/stt
+// Reference VoiceInk : LLMkit XAIStreamingClient.swift (37100b2, VoiceInk
+// 2.20 "Add Grok Voice Transcribe 2.0 support").
+// WSS    : wss://api.x.ai/v1/stt (pas de parametre model : xAI choisit
+//          Grok Voice Transcribe 2.0 par defaut)
 // Query  : sample_rate=16000, encoding=pcm, interim_results=true,
-//          endpointing=800 (800 ms de silence = fin d'enonce, defaut 10 ms
-//          coupe a la moindre micro-pause), [language=<code>] si != auto.
+//          endpointing=100 + smart_turn=0.5 (silence detecte vite, puis
+//          Smart Turn decide si la phrase est finie), [language=<code>] si
+//          != auto, + un keyterm=<terme> par mot du vocabulaire.
 // Auth   : Authorization: Bearer <apiKey> en header WS.
 // Audio  : frames binaires Int16 little-endian.
 // Init   : on attend un message `transcript.created` (ou `error`) avant
@@ -45,13 +48,17 @@ impl StreamingProvider for XaiStreaming {
         on_event: Box<dyn Fn(StreamingEvent) + Send + Sync>,
     ) -> Result<String> {
         let mut url = String::from(
-            "wss://api.x.ai/v1/stt?sample_rate=16000&encoding=pcm&interim_results=true&endpointing=800",
+            "wss://api.x.ai/v1/stt?sample_rate=16000&encoding=pcm&interim_results=true&endpointing=100&smart_turn=0.5",
         );
         if let Some(lang) = config.language.as_deref() {
             if !lang.is_empty() && lang != "auto" {
                 url.push_str("&language=");
                 url.push_str(lang);
             }
+        }
+        for term in crate::transcription::cloud::xai::keyterms(&config.custom_vocabulary) {
+            url.push_str("&keyterm=");
+            url.push_str(&urlencoding::encode(&term));
         }
 
         let mut req = url

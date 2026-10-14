@@ -20,6 +20,9 @@ import {
 } from "@/lib/tauri";
 import { promptDescription, promptTitle } from "@/lib/promptLabels";
 
+/// Valeur sentinelle de l'option "Identifiant personnalise" du selecteur.
+const CUSTOM_MODEL_OPTION = "__custom_model_id__";
+
 export function EnhancementPanel() {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
@@ -38,6 +41,9 @@ export function EnhancementPanel() {
   const [localcliCustomCmd, setLocalcliCustomCmd] = useState("");
   const [localcliTimeout, setLocalcliTimeout] = useState(45);
   const [localcliStatus, setLocalcliStatus] = useState("");
+  // VoiceInk EnhancementModelPicker : option "Custom..." + champ "Model ID".
+  const [editingCustomModel, setEditingCustomModel] = useState(false);
+  const [customModelDraft, setCustomModelDraft] = useState("");
 
   useEffect(() => {
     refresh();
@@ -60,6 +66,15 @@ export function EnhancementPanel() {
       setEnabled(en);
       setProviders(provs);
       setSelection(sel);
+      // Identifiant libre deja selectionne : le champ de saisie le montre.
+      const selectedProvider = provs.find((p) => p.id === sel?.provider_id);
+      if (
+        selectedProvider?.supports_custom_model_id &&
+        sel?.model &&
+        !selectedProvider.models.includes(sel.model)
+      ) {
+        setCustomModelDraft(sel.model);
+      }
       setPrompts(ps);
       setActivePromptId(act);
       setOllamaBaseUrl(oBase);
@@ -122,6 +137,7 @@ export function EnhancementPanel() {
   async function selectProvider(providerId: string) {
     const p = providers.find((x) => x.id === providerId);
     if (!p) return;
+    setEditingCustomModel(false);
     const model = p.default_model || "";
     setSelection({ provider_id: providerId, model });
     await api.setLlmSelection(providerId, model);
@@ -134,6 +150,36 @@ export function EnhancementPanel() {
     if (!selection) return;
     setSelection({ ...selection, model });
     await api.setLlmSelection(selection.provider_id, model);
+  }
+
+  async function onModelOptionChange(value: string) {
+    if (!currentProvider) return;
+    if (value === CUSTOM_MODEL_OPTION) {
+      // VoiceInk : on repropose le dernier identifiant libre et on
+      // l'applique tout de suite s'il existe.
+      const saved =
+        currentProvider.custom_model_id ??
+        (selection?.model && !currentProvider.models.includes(selection.model)
+          ? selection.model
+          : "");
+      setCustomModelDraft(saved);
+      setEditingCustomModel(true);
+      if (saved) await selectModel(saved);
+      return;
+    }
+    setEditingCustomModel(false);
+    await selectModel(value);
+  }
+
+  async function saveCustomModelId() {
+    const id = customModelDraft.trim();
+    if (!id) return;
+    await selectModel(id);
+    try {
+      setProviders(await api.listLlmProviders());
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   async function selectPrompt(id: string) {
@@ -175,6 +221,10 @@ export function EnhancementPanel() {
   const isCustom = selection?.provider_id === "custom";
   const isLocalcli = selection?.provider_id === "localcli";
   const isLocalcliCustom = isLocalcli && selection?.model === "custom";
+  const isCustomModelChoice =
+    !!currentProvider?.supports_custom_model_id &&
+    (editingCustomModel ||
+      (!!selection?.model && !currentProvider.models.includes(selection.model)));
 
   async function saveLocalcliCustomCmd() {
     try {
@@ -239,22 +289,55 @@ export function EnhancementPanel() {
           <div className="grid gap-2">
             <label className="text-sm font-medium">{t("enhancement.model")}</label>
             <select
-              value={selection?.model ?? ""}
-              onChange={(e) => selectModel(e.target.value)}
+              value={isCustomModelChoice ? CUSTOM_MODEL_OPTION : (selection?.model ?? "")}
+              onChange={(e) => onModelOptionChange(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             >
-              {selection?.model &&
+              {!currentProvider.supports_custom_model_id &&
+                selection?.model &&
                 !currentProvider.models.includes(selection.model) && (
-                  <option value={selection.model}>
-                    {t("enhancement.currentModel", { model: selection.model })}
-                  </option>
+                  <option value={selection.model}>{selection.model}</option>
                 )}
               {currentProvider.models.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
               ))}
+              {currentProvider.supports_custom_model_id && (
+                <option value={CUSTOM_MODEL_OPTION}>
+                  {t("enhancement.customModelOption")}
+                </option>
+              )}
             </select>
+            {isCustomModelChoice && (
+              <div className="grid gap-1">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customModelDraft}
+                    onChange={(e) => setCustomModelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveCustomModelId();
+                    }}
+                    placeholder={t("enhancement.customModelIdPlaceholder")}
+                    className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 font-mono text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={saveCustomModelId}
+                    disabled={
+                      !customModelDraft.trim() ||
+                      customModelDraft.trim() === selection?.model
+                    }
+                  >
+                    {t("enhancement.save")}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("enhancement.customModelIdHint")}
+                </p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               {t("enhancement.endpoint")} <code>{currentProvider.endpoint}</code>
             </p>

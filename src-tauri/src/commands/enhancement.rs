@@ -100,6 +100,10 @@ pub struct LLMProviderInfo {
     pub models: Vec<String>,
     pub requires_api_key: bool,
     pub has_api_key: bool,
+    /// VoiceInk supportsCustomModelID : un identifiant libre est accepte.
+    pub supports_custom_model_id: bool,
+    /// Dernier identifiant libre saisi pour ce provider.
+    pub custom_model_id: Option<String>,
 }
 
 #[command]
@@ -120,6 +124,12 @@ pub fn list_llm_providers(app: AppHandle) -> Result<Vec<LLMProviderInfo>, String
             requires_api_key: p.requires_api_key(),
             has_api_key: p.requires_api_key()
                 && crate::services::api_keys::has_api_key(p.id()),
+            supports_custom_model_id: p.supports_custom_model_id(),
+            custom_model_id: if p.supports_custom_model_id() {
+                service::get_custom_model_id(&app, p.id())
+            } else {
+                None
+            },
         })
         .collect())
 }
@@ -144,6 +154,20 @@ pub fn set_llm_selection(
     provider_id: String,
     model: String,
 ) -> Result<(), String> {
+    // VoiceInk AIService.selectModel : identifiant trimme, un identifiant
+    // hors liste est memorise comme "CustomModelID" du provider.
+    let model = model.trim().to_string();
+    if let Some(state) = app.try_state::<EnhancementState>() {
+        if let Some(p) = state.registry.find(&provider_id) {
+            if p.supports_custom_model_id()
+                && !model.is_empty()
+                && !p.default_models().contains(&model.as_str())
+            {
+                service::set_custom_model_id(&app, &provider_id, &model)
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+    }
     service::set_selection(&app, &provider_id, &model).map_err(|e| e.to_string())
 }
 
