@@ -285,7 +285,10 @@ mod tests {
         ]);
         assert_eq!(words.len(), 2);
         assert_eq!(words[0], (1.0, " l'entièreté,".to_string()));
-        assert_eq!(join_words(&[words[0].1.clone(), "texte".into()]), "l'entièreté, texte");
+        assert_eq!(
+            join_words(&[words[0].1.clone(), "texte".into()]),
+            "l'entièreté, texte"
+        );
     }
 
     /// Compare passe unique et fenetres sur un vrai enregistrement.

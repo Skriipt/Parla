@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-21
+
+### Fixed
+- Long dictations with local Parakeet: recordings over 15 seconds are now transcribed in 15-second windows with 2 seconds of overlap, cut at the quietest point, like FluidAudio's `ChunkProcessor` used by VoiceInk. A single pass over a long recording made Parakeet v3 drift into English and drop whole sentences (a 2 min 28 French dictation came out as 369 characters of English, it now gives 1,800 characters of French).
+
 ## [0.6.2] - 2026-10-14
 
 Catch-up with VoiceInk 2.20 to 2.22 on models, plus a DirectML installer for
