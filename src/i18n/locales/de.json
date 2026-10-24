@@ -744,5 +744,133 @@
   "cloudTimeout": {
     "title": "Zeitlimit für Cloud-Transkription",
     "description": "Maximale Wartezeit auf eine Transkription vom Cloud-Anbieter. Standard: 30 Sekunden."
+  },
+  "modelCatalog": {
+    "whisper": {
+      "tiny": {
+        "name": "Tiny (mehrsprachig)",
+        "notes": "Sehr schnell, begrenzte Genauigkeit. Gut zum Testen."
+      },
+      "tinyEn": {
+        "name": "Tiny (Englisch)",
+        "notes": "Nur Englisch. Bei englischen Texten etwas genauer als das mehrsprachige Tiny."
+      },
+      "base": {
+        "name": "Base (mehrsprachig)",
+        "notes": "Guter Kompromiss zwischen Größe und Genauigkeit für die CPU."
+      },
+      "baseEn": {
+        "name": "Base (Englisch)",
+        "notes": "Nur Englisch. Bei englischen Texten genauer als das mehrsprachige Base."
+      },
+      "largeV2": {
+        "name": "Large v2 (mehrsprachig)",
+        "notes": "Sehr hohe Genauigkeit. Benötigt viel Arbeitsspeicher."
+      },
+      "largeV3": {
+        "name": "Large v3 (mehrsprachig)",
+        "notes": "Neueste Generation. Maximale Genauigkeit bei hoher CPU-Auslastung."
+      },
+      "largeV3Turbo": {
+        "name": "Large v3 Turbo",
+        "notes": "Large v3, auf Geschwindigkeit optimiert. Mit CUDA empfohlen."
+      },
+      "largeV3TurboQ5": {
+        "name": "Large v3 Turbo (Q5_0)",
+        "notes": "Quantisiert. Sehr gutes Verhältnis von Qualität zu Größe für die CPU."
+      }
+    },
+    "parakeet": {
+      "v2": {
+        "name": "Parakeet TDT 0.6B v2 (Englisch, F16)",
+        "notes": "Referenzmodell. Nur Englisch. Download: ca. 2,5 GB."
+      },
+      "v2Int8": {
+        "name": "Parakeet TDT 0.6B v2 (Englisch, int8)",
+        "notes": "Mit int8 quantisierte Variante. Ca. 680 MB. Nur Englisch."
+      },
+      "v3": {
+        "name": "Parakeet TDT 0.6B v3 (mehrsprachig, F16)",
+        "notes": "Mehrsprachig (Englisch und 25 europäische Sprachen). Ca. 2,5 GB."
+      },
+      "v3Int8": {
+        "name": "Parakeet TDT 0.6B v3 (mehrsprachig, int8)",
+        "notes": "Mehrsprachig, mit int8 quantisiert. Ca. 680 MB."
+      }
+    },
+    "cloud": {
+      "groqWhisperTurbo": {
+        "notes": "Whisper v3 Turbo auf der Groq-Infrastruktur. Sehr schnell."
+      },
+      "scribeV1": {
+        "notes": "Allgemeine Transkription nach Abschluss der Aufnahme."
+      },
+      "scribeMedical": {
+        "notes": "Für klinische Aufnahmen und medizinische Fachbegriffe optimiert. Transkribiert nach dem Aufnahmeende, ohne Echtzeitübertragung."
+      },
+      "scribeRealtime": {
+        "notes": "Echtzeitübertragung über WebSocket."
+      },
+      "nova3": {
+        "notes": "Spitzenmodell für Verarbeitung nach Aufnahmeende und in Echtzeit, mit eigenen Schlüsselwörtern."
+      },
+      "nova3Medical": {
+        "notes": "Für medizinische Anwendungen angepasst (nur Englisch)."
+      },
+      "voxtralMini": {
+        "notes": "Transkription nach Aufnahmeende mit automatischer Spracherkennung."
+      },
+      "voxtralRealtime": {
+        "notes": "Echtzeitübertragung über WebSocket."
+      },
+      "sonioxAsync": {
+        "notes": "Asynchrone Transkription. Unterstützt 60 Sprachen."
+      },
+      "sonioxRealtime": {
+        "notes": "Echtzeitübertragung mit feingranularen Tokens."
+      },
+      "speechmatics": {
+        "notes": "Transkription nach Aufnahmeende (asynchrone Aufträge) und in Echtzeit (eu2)."
+      },
+      "geminiPro": {
+        "notes": "Direkt eingebettete Audiodaten in Base64, durch einen Prompt gesteuert."
+      },
+      "geminiFlash": {
+        "notes": "Schneller und kostengünstiger."
+      },
+      "grokVoice": {
+        "notes": "Spracherkennung von xAI, nach Aufnahmeende und in Echtzeit über WebSocket."
+      },
+      "ink2": {
+        "notes": "Nur Echtzeitübertragung, das schnellste Modell von Cartesia. Nur Englisch, ohne automatische Spracherkennung."
+      },
+      "universal36": {
+        "notes": "Spitzenmodell für Echtzeittranskription, 32 Sprachen. Bei erneuter Transkription ohne Echtzeit: je nach Sprache Universal-3.5 Pro oder Universal-2."
+      },
+      "universal35": {
+        "notes": "Das genaueste Modell von AssemblyAI, mit Echtzeitunterstützung. Verarbeitung nach Aufnahmeende per Upload und Statusabfrage."
+      },
+      "universal2": {
+        "notes": "Universal-2 für Transkription nach Aufnahmeende, über 90 Sprachen. Schneller als Universal-3.5 Pro, ohne Echtzeitunterstützung (VoiceInk 2.13)."
+      }
+    },
+    "llm": {
+      "qwen25": {
+        "notes": "Vielseitig, mit einem ausgezeichneten Verhältnis von Qualität zu Größe."
+      },
+      "llama32": {
+        "notes": "Großes Kontextfenster."
+      },
+      "gemma2": {
+        "notes": "Kleines Modell, schnell auf der CPU."
+      },
+      "phi35": {
+        "notes": "3,8 Milliarden Parameter, stark beim Schlussfolgern und Befolgen von Anweisungen."
+      }
+    },
+    "imported": {
+      "whisper": "Vom Nutzer importiertes Whisper-GGML-Modell.",
+      "llm": "Vom Nutzer importiertes GGUF-Modell."
+    }
   }
 }
