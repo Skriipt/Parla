@@ -11,7 +11,7 @@ const { I18nextProvider, initReactI18next } = require("react-i18next");
 
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
-const languages = ["en", "fr", "es"];
+const languages = ["en", "fr", "es", "de"];
 const resources = Object.fromEntries(languages.map((lang) => [
   lang, { translation: JSON.parse(read(`src/i18n/locales/${lang}.json`)) },
 ]));
@@ -136,15 +136,16 @@ for (const lang of languages) {
 }
 
 test("the reported Parakeet text and default-model heading follow language changes", async () => {
-  const i18n = await translator("en");
+  const i18n = await translator("de");
   const model = catalogs.parakeet[0];
   const source = { kind: "parakeet", parakeet_model_id: model.id };
   const expected = {
+    de: ["Englisch", "Referenzmodell. Nur Englisch."],
     en: ["English", "Reference model. English only."],
     fr: ["anglais", "Modèle de référence. Anglais uniquement."],
     es: ["inglés", "Modelo de referencia. Solo inglés."],
   };
-  for (const lang of ["en", "fr", "es", "en"]) {
+  for (const lang of ["de", "en", "fr", "es", "de"]) {
     await i18n.changeLanguage(lang);
     const text = localModelText(i18n.t, "parakeet", model);
     assert.equal(text.name, `Parakeet TDT 0.6B v2 (${expected[lang][0]}, F16)`);
@@ -154,12 +155,12 @@ test("the reported Parakeet text and default-model heading follow language chang
 });
 
 test("imported names and unknown models survive; cloud identity includes the provider", async () => {
-  const i18n = await translator("en");
+  const i18n = await translator("de");
   for (const kind of ["whisper", "llm"]) {
     const model = { ...catalogs[kind][0], imported: true, display_name: "Mein {{name}} <Modell>" };
     const text = localModelText(i18n.t, kind, model);
     assert.equal(text.name, model.display_name);
-    assert.match(text.notes, /model imported by the user\.$/);
+    assert.match(text.notes, /^Vom Nutzer importiertes/);
   }
   for (const id of ["new-model", "constructor", "__proto__"]) {
     const model = { id, display_name: "Unknown {{model}}", notes: "Original {{notes}}" };
@@ -177,14 +178,15 @@ test("model text falls back to English when a translation is unavailable", async
 });
 
 test("language names and model sizes use the selected locale without changing codes", () => {
-  const expected = { en: "German", fr: "allemand", es: "alemán" };
+  const expected = { en: "German", fr: "allemand", es: "alemán", de: "Deutsch" };
   for (const lang of languages) {
     const names = new Intl.DisplayNames([lang], { type: "language", fallback: "none" });
     assert.equal(languageLabel("de", names), expected[lang]);
     assert.ok(languageLabel("en_uk", names));
     assert.equal(languageLabel("invalid_code!", names), "INVALID_CODE!");
   }
+  assert.match(formatModelBytes(2500000000, "de"), /2,5\s*GB/);
   assert.match(formatModelBytes(2500000000, "fr"), /2,5\s*Go/);
   assert.match(formatModelBytes(2500000000, "en"), /2\.5\s*GB/);
-  assert.equal(formatModelBytes(null, "en"), "-");
+  assert.equal(formatModelBytes(null, "de"), "-");
 });
