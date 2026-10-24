@@ -428,7 +428,12 @@ fn tr(lang: &str, key: &str) -> String {
             "Buscar actualizaciones",
             "Nach Updates suchen",
         ],
-        "quit" => ["Quit Parla", "Quitter Parla", "Salir de Parla", "Parla beenden"],
+        "quit" => [
+            "Quit Parla",
+            "Quitter Parla",
+            "Salir de Parla",
+            "Parla beenden",
+        ],
         _ => [key, key, key, key],
     };
     row[col].to_string()
